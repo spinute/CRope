@@ -1,32 +1,58 @@
 #include "rope.h"
+#include <assert.h>
 #include <string.h>
+
+static void
+test_to_string(Rope rope, char expected[])
+{
+	char buf[100];
+	memset(buf, 0, sizeof(buf));
+	RopeToString(rope, (char *)buf, sizeof(buf));
+	assert(strlen(expected) == strlen(buf));
+	assert(strcmp(buf, expected) == 0);
+}
 
 int
 main(int argc, char *argv[])
 {
 	char left[] = "test ",
-		 right[] = "desu.";
+		 right[] = "desu.",
+		 left_right[] = "test desu.";
 	Rope lrope = RopeCreate(left, strlen(left));
 	Rope rrope = RopeCreate(right, strlen(right));
 	Rope concat, lsub, rsub, bsub;
 
-	RopeToString(lrope);
-	RopeToString(rrope);
+	test_to_string(lrope, left);
+	test_to_string(rrope, right);
 
 	concat = RopeConcat(lrope, rrope);
-	RopeToString(concat);
+	RopeDestroy(lrope);
+	RopeDestroy(rrope);
+
+	RopeDump(concat);
+
+	{
+		RopeScan scan = RopeScanInit(concat);
+
+		for (int i = 0; i < (int) strlen(left_right); i++)
+			assert(RopeScanGetNext(scan) == left_right[i]);
+
+		assert(RopeScanGetNext(scan) == '\0');
+
+		RopeScanFini(scan);
+	}
+
+	test_to_string(concat, left_right);
 
 	lsub = RopeSubstr(concat, 1, 3);
 	rsub = RopeSubstr(concat, 6, 4);
 	bsub = RopeSubstr(concat, 1, 7);
 
-	RopeToString(lsub);
-	RopeToString(rsub);
-	RopeToString(bsub);
+	test_to_string(lsub, "est");
+	test_to_string(rsub, "esu.");
+	test_to_string(bsub, "est des");
 
 	RopeDestroy(concat);
-	RopeDestroy(lrope);
-	RopeDestroy(rrope);
 	RopeDestroy(lsub);
 	RopeDestroy(rsub);
 	RopeDestroy(bsub);
