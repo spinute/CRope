@@ -3,21 +3,17 @@
 #include <string.h>
 
 static void
-test_to_string(Rope rope, char expected[])
-{
+test_to_string(Rope rope, char expected[]) {
 	char buf[100];
 	memset(buf, 0, sizeof(buf));
-	RopeToString(rope, (char *)buf, sizeof(buf));
+	RopeToString(rope, (char *) buf, sizeof(buf));
 	assert(strlen(expected) == strlen(buf));
 	assert(strcmp(buf, expected) == 0);
 }
 
 int
-main(int argc, char *argv[])
-{
-	char left[] = "test ",
-		 right[] = "desu.",
-		 left_right[] = "test desu.";
+main(int argc, char *argv[]) {
+	char left[] = "test ", right[] = "desu.", left_right[] = "test desu.";
 	Rope lrope = RopeCreate(left, strlen(left));
 	Rope rrope = RopeCreate(right, strlen(right));
 	Rope concat, lsub, rsub, bsub;
