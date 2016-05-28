@@ -30,18 +30,23 @@ main(int argc, char *argv[]) {
 
 	{
 		RopeScanLeaf scan = RopeScanLeafInit(concat);
-		char * str = RopeScanLeafGetNext(scan);
-		puts(str);
-		assert(strcmp(str, left) == 0);
 
-		str = RopeScanLeafGetNext(scan);
-		puts(str);
-		assert(strcmp(str, right) == 0);
-
-		str = RopeScanLeafGetNext(scan);
-		assert(str == NULL);
+		assert(strcmp(RopeScanLeafGetNext(scan), left) == 0);
+		assert(strcmp(RopeScanLeafGetNext(scan), right) == 0);
+		assert(RopeScanLeafGetNext(scan) == NULL);
 
 		RopeScanLeafFini(scan);
+	}
+
+	{
+		RopeScanChar scan = RopeScanCharInit(concat);
+
+		for (int i = 0; i < (int) strlen(left_right); i++)
+			assert(RopeScanCharGetNext(scan) == left_right[i]);
+
+		assert(RopeScanCharGetNext(scan) == '\0');
+
+		RopeScanCharFini(scan);
 	}
 
 	test_to_string(concat, left_right);

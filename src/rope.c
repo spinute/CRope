@@ -288,12 +288,52 @@ RopeScanLeafGetNext(RopeScanLeaf scan) {
 		scan->node = scan->node->left;
 	}
 
-	elog(scan->node->str);
-
 	return rv;
 }
 
 void
 RopeScanLeafFini(RopeScanLeaf scan) {
+	pfree(scan);
+}
+
+struct rope_scan_char_tag
+{
+	RopeScanLeaf scan_leaf;
+	char *str;
+	size_t pos;
+};
+
+RopeScanChar
+RopeScanCharInit(Rope rope)
+{
+	RopeScanChar scan = palloc(sizeof(*scan));
+
+	scan->scan_leaf = RopeScanLeafInit(rope);
+	scan->str = RopeScanLeafGetNext(scan->scan_leaf);
+	scan->pos = 0;
+
+	return scan;
+}
+
+char
+RopeScanCharGetNext(RopeScanChar scan)
+{
+	if (scan->str[scan->pos] == '\0')
+	{
+		scan->str = RopeScanLeafGetNext(scan->scan_leaf);
+
+		if (!scan->str)
+			return 0;
+
+		scan->pos = 0;
+	}
+
+	return scan->str[scan->pos++];
+}
+
+void
+RopeScanCharFini(RopeScanChar scan)
+{
+	RopeScanLeafFini(scan->scan_leaf);
 	pfree(scan);
 }
