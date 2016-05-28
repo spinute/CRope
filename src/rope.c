@@ -225,7 +225,8 @@ RopeIndex(Rope rope, size_t i) {
 	}
 }
 
-#define ROPE_SCAN_MAX_DEPTH 64 /* TODO: It may be possible to fix this value by wordsize */
+#define ROPE_SCAN_MAX_DEPTH \
+	64 /* TODO: It may be possible to fix this value by wordsize */
 
 typedef enum {
 	LEFT_DOWN,
@@ -279,7 +280,8 @@ RopeScanLeafGetNext(RopeScanLeaf scan) {
 	scan->node = scan->stack[scan->depth];
 	scan->dir[scan->depth] = RIGHT_DOWN;
 	scan->depth++;
-	scan->node = scan->node->right; /* XXX: Assuming non-leaf node has right child */
+	scan->node =
+	    scan->node->right; /* XXX: Assuming non-leaf node has right child */
 
 	while (!scan->node->is_leaf) {
 		scan->stack[scan->depth] = scan->node;
@@ -296,16 +298,14 @@ RopeScanLeafFini(RopeScanLeaf scan) {
 	pfree(scan);
 }
 
-struct rope_scan_char_tag
-{
+struct rope_scan_char_tag {
 	RopeScanLeaf scan_leaf;
 	char *str;
 	size_t pos;
 };
 
 RopeScanChar
-RopeScanCharInit(Rope rope)
-{
+RopeScanCharInit(Rope rope) {
 	RopeScanChar scan = palloc(sizeof(*scan));
 
 	scan->scan_leaf = RopeScanLeafInit(rope);
@@ -316,10 +316,8 @@ RopeScanCharInit(Rope rope)
 }
 
 char
-RopeScanCharGetNext(RopeScanChar scan)
-{
-	if (scan->str[scan->pos] == '\0')
-	{
+RopeScanCharGetNext(RopeScanChar scan) {
+	if (scan->str[scan->pos] == '\0') {
 		scan->str = RopeScanLeafGetNext(scan->scan_leaf);
 
 		if (!scan->str)
@@ -332,8 +330,7 @@ RopeScanCharGetNext(RopeScanChar scan)
 }
 
 void
-RopeScanCharFini(RopeScanChar scan)
-{
+RopeScanCharFini(RopeScanChar scan) {
 	RopeScanLeafFini(scan->scan_leaf);
 	pfree(scan);
 }

@@ -18,7 +18,7 @@ char RopeIndex(Rope rope, size_t i);
 
 typedef struct rope_scan_leaf_tag *RopeScanLeaf;
 RopeScanLeaf RopeScanLeafInit(Rope rope);
-char * RopeScanLeafGetNext(RopeScanLeaf scan);
+char *RopeScanLeafGetNext(RopeScanLeaf scan);
 void RopeScanLeafFini(RopeScanLeaf scan);
 
 typedef struct rope_scan_char_tag *RopeScanChar;
