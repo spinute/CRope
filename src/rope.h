@@ -16,7 +16,12 @@ Rope RopeConcat(Rope left, Rope right);
 Rope RopeSubstr(Rope rope, size_t i, size_t n);
 char RopeIndex(Rope rope, size_t i);
 
-typedef struct rope_scan_tag *RopeScan;
-RopeScan RopeScanInit(Rope rope);
-char RopeScanGetNext(RopeScan scan);
-void RopeScanFini(RopeScan scan);
+typedef struct rope_scan_leaf_tag *RopeScanLeaf;
+RopeScanLeaf RopeScanLeafInit(Rope rope);
+char * RopeScanLeafGetNext(RopeScanLeaf scan);
+void RopeScanLeafFini(RopeScanLeaf scan);
+
+typedef struct rope_scan_char_tag *RopeScanChar;
+RopeScanChar RopeScanCharInit(Rope rope);
+char RopeScanCharGetNext(RopeScanChar scan);
+void RopeScanCharFini(RopeScanChar scan);

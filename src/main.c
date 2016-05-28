@@ -1,4 +1,5 @@
 #include "rope.h"
+#include <stdio.h>
 #include <assert.h>
 #include <string.h>
 
@@ -28,14 +29,19 @@ main(int argc, char *argv[]) {
 	RopeDump(concat);
 
 	{
-		RopeScan scan = RopeScanInit(concat);
+		RopeScanLeaf scan = RopeScanLeafInit(concat);
+		char * str = RopeScanLeafGetNext(scan);
+		puts(str);
+		assert(strcmp(str, left) == 0);
 
-		for (int i = 0; i < (int) strlen(left_right); i++)
-			assert(RopeScanGetNext(scan) == left_right[i]);
+		str = RopeScanLeafGetNext(scan);
+		puts(str);
+		assert(strcmp(str, right) == 0);
 
-		assert(RopeScanGetNext(scan) == '\0');
+		str = RopeScanLeafGetNext(scan);
+		assert(str == NULL);
 
-		RopeScanFini(scan);
+		RopeScanLeafFini(scan);
 	}
 
 	test_to_string(concat, left_right);

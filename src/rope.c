@@ -225,66 +225,75 @@ RopeIndex(Rope rope, size_t i) {
 	}
 }
 
-#define ROPE_SCAN_MAX_DEPTH 20
+#define ROPE_SCAN_MAX_DEPTH 64 /* TODO: It may be possible to fix this value by wordsize */
 
 typedef enum {
 	LEFT_DOWN,
 	RIGHT_DOWN,
 } scan_dir;
 
-struct rope_scan_tag {
-	size_t pos, depth;
+struct rope_scan_leaf_tag {
+	size_t depth;
+	bool is_end;
+	Node node;
 	scan_dir dir[ROPE_SCAN_MAX_DEPTH];
 	Node stack[ROPE_SCAN_MAX_DEPTH];
 };
 
-RopeScan
-RopeScanInit(Rope rope) {
-	Node node = rope->root;
-	RopeScan scan = palloc(sizeof(*scan));
+RopeScanLeaf
+RopeScanLeafInit(Rope rope) {
+	RopeScanLeaf scan = palloc(sizeof(*scan));
 
-	scan->pos = scan->depth = 0;
+	scan->node = rope->root;
+	scan->depth = 0;
+	scan->is_end = false;
 
-	while (!node->is_leaf) {
-		scan->stack[scan->depth] = node;
+	while (!scan->node->is_leaf) {
+		scan->stack[scan->depth] = scan->node;
 		scan->dir[scan->depth] = LEFT_DOWN;
 		scan->depth++;
-		node = node->left;
+		scan->node = scan->node->left;
 	}
 
 	return scan;
 }
 
-char
-RopeScanGetNext(RopeScan scan) {
-	Node node = scan->stack[scan->depth];
+char *
+RopeScanLeafGetNext(RopeScanLeaf scan) {
+	char *rv;
 
-	for (;;) {
-		if (scan->pos < node->len)
-			return node->str[scan->pos++];
+	if (scan->is_end)
+		return NULL;
 
-		do {
-			if (scan->depth == 0) /* End of scan */
-				return 0;         /* FIXME: Is NUL appropriate? */
-			scan->depth--;
-		} while (scan->dir[scan->depth] == RIGHT_DOWN);
+	rv = scan->node->str;
 
-		scan->dir[scan->depth] = RIGHT_DOWN;
-		node = scan->stack[scan->depth];
-		scan->depth++;
-
-		while (!node->is_leaf) {
-			scan->stack[scan->depth] = node;
-			scan->dir[scan->depth] = LEFT_DOWN;
-			scan->depth++;
-			node = node->left;
+	do {
+		if (scan->depth == 0) /* End of scan */
+		{
+			scan->is_end = true;
+			return rv;
 		}
+		scan->depth--;
+	} while (scan->dir[scan->depth] == RIGHT_DOWN);
 
-		scan->pos = 0;
+	scan->node = scan->stack[scan->depth];
+	scan->dir[scan->depth] = RIGHT_DOWN;
+	scan->depth++;
+	scan->node = scan->node->right; /* XXX: Assuming non-leaf node has right child */
+
+	while (!scan->node->is_leaf) {
+		scan->stack[scan->depth] = scan->node;
+		scan->dir[scan->depth] = LEFT_DOWN;
+		scan->depth++;
+		scan->node = scan->node->left;
 	}
+
+	elog(scan->node->str);
+
+	return rv;
 }
 
 void
-RopeScanFini(RopeScan scan) {
+RopeScanLeafFini(RopeScanLeaf scan) {
 	pfree(scan);
 }
