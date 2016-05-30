@@ -4,155 +4,43 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-typedef struct node_tag *Node;
-
-struct node_tag {
+struct rope_tag {
+	size_t len; /* w/o NUL */
 	bool is_leaf;
-	size_t height;
-	size_t len; /* without NUL */
-	Node left, right;
 	int ref_count;
+	Rope left, right;
 	char str[];
 };
 
-static Node
-node_ref(Node node) {
-	node->ref_count++;
-	return node;
-}
-
-static void
-node_deref(Node node) {
-	node->ref_count--;
-	if (node->ref_count == 0)
-		pfree(node);
-}
-
-static Node
-CreateConcat(Node left, Node right) {
-	Node node = palloc(sizeof(*node));
-
-	node->is_leaf = false;
-	node->height =
-	    left->height > right->height ? left->height + 1 : right->height + 1;
-	node->ref_count = 1;
-	node->len = 0;
-	if (left)
-		node->len += left->len;
-	if (right)
-		node->len += right->len;
-	node->left = left;
-	node->right = right;
-	node->str[0] = '\0'; /* XXX: for safety */
-
-	return node;
-}
-
-static Node
-CreateLeaf(char *str, size_t len) {
-	Node node = palloc(sizeof(*node) + len + 1);
-
-	node->is_leaf = true;
-	node->height = 0;
-	node->ref_count = 1;
-	node->len = len;
-	node->left = node->right = NULL;
-	memcpy(node->str, str, len);
-	node->str[len] = '\0';
-
-	return node;
-}
-
-static void
-SubtreeDestructChain(Node root) {
-	if (root->left)
-		SubtreeDestructChain(root->left);
-	if (root->right)
-		SubtreeDestructChain(root->right);
-	node_deref(root);
-}
-
-static void
-subtree_dump(Node node, int level) {
-	for (int i = 0; i < level; i++)
-		printf(" ");
-	printf("| ");
-
-	if (node->is_leaf)
-		printf("Leaf: len=%zu, str=%s, refcount=%d\n", node->len, node->str,
-		       node->ref_count);
-	else {
-		printf("Concat: height=%zu, len=%zu, refcount=%d\n", node->height,
-		       node->len, node->ref_count);
-		subtree_dump(node->left, level + 1);
-		subtree_dump(node->right, level + 1);
-	}
-}
-
-static void
-SubtreeDump(Node root) {
-	assert(root);
-	subtree_dump(root, 0);
-}
-
-struct rope_tag {
-	Node root;
-};
-
-Rope
-RopeCreate(char str[], size_t len) {
-	Rope rope = palloc(sizeof(*rope));
-
-	assert(str);
-
-	rope->root = CreateLeaf(str, len);
-
+static Rope
+rope_ref(Rope rope) {
+	rope->ref_count++;
 	return rope;
 }
 
-void
-RopeDestroy(Rope rope) {
-	assert(rope);
-	SubtreeDestructChain(rope->root);
-	pfree(rope);
+static void
+rope_deref(Rope rope) {
+	rope->ref_count--;
+	if (rope->ref_count == 0)
+		pfree(rope);
 }
 
-void
-RopeDump(Rope rope) {
-	assert(rope);
-	SubtreeDump(rope->root);
-}
+static Rope
+rope_concat_internal(Rope left, Rope right)
+{
+	Rope rope = palloc(sizeof(*rope));
 
-static int
-rope_collect_cstr(Node node, char *ret_buf, int i) {
-	if (node->is_leaf) {
-		printf("i=%d buf_ptr=%p, node->str=%s, node->len=%zu\n", i, ret_buf,
-		       node->str, node->len);
-		memcpy(ret_buf + i, node->str, node->len);
-		return node->len;
-	}
+	rope->is_leaf = false;
+	rope->ref_count = 1;
+	rope->len = 0;
+	if (left)
+		rope->len += left->len;
+	if (right)
+		rope->len += right->len;
+	rope->left = left;
+	rope->right = right;
 
-	i += rope_collect_cstr(node->left, ret_buf, i);
-	return rope_collect_cstr(node->right, ret_buf, i);
-}
-
-int
-RopeToString(Rope rope, char *ret_buf, size_t buf_size) {
-	int rv;
-
-	if (rope->root->len > buf_size - 1)
-		return -1;
-
-	rv = rope_collect_cstr(rope->root, ret_buf, 0);
-	ret_buf[rope->root->len] = '\0';
-
-	return rv;
-}
-
-size_t
-RopeGetLen(Rope rope) {
-	assert(rope);
-	return rope->root->len;
+	return rope;
 }
 
 Rope
@@ -160,65 +48,134 @@ RopeConcat(Rope left, Rope right) {
 	assert(left);
 	assert(right);
 
-	{
-		Rope new_rope = palloc(sizeof(*new_rope));
-		new_rope->root =
-		    CreateConcat(node_ref(left->root), node_ref(right->root));
+	return rope_concat_internal(rope_ref(left), rope_ref(right));
+}
 
-		return new_rope;
+Rope
+RopeCreate(char *str, size_t len) {
+	Rope rope = palloc(sizeof(*rope) + len + 1);
+
+	rope->is_leaf = true;
+	rope->ref_count = 1;
+	rope->len = len;
+	rope->left = rope->right = NULL;
+	memcpy(rope->str, str, len);
+	rope->str[len] = '\0';
+
+	return rope;
+}
+
+static void
+rope_deref_tree(Rope root) {
+	if (root->left)
+		rope_deref(root->left);
+	if (root->right)
+		rope_deref(root->right);
+	rope_deref(root);
+}
+
+static void
+rope_dump(Rope rope, int level) {
+	for (int i = 0; i < level; i++)
+		printf("  ");
+	printf("| ");
+
+	if (rope->is_leaf)
+		printf("Leaf: len=%zu, str=%s, refcount=%d\n", rope->len, rope->str,
+		       rope->ref_count);
+	else {
+		printf("Concat: len=%zu, refcount=%d\n", rope->len, rope->ref_count);
+		rope_dump(rope->left, level + 1);
+		rope_dump(rope->right, level + 1);
 	}
 }
 
-static Node
-node_get_substr(Node node, size_t i, size_t n) {
-	if (node->is_leaf) {
-		if (n == node->len)
-			return node_ref(node);
+void
+RopeDestroy(Rope rope) {
+	assert(rope);
+	rope_deref_tree(rope);
+}
 
-		return CreateLeaf(((char *) node->str) + i, n);
+void
+RopeDump(Rope rope) {
+	assert(rope);
+	rope_dump(rope, 0);
+}
+
+static int
+rope_collect_cstr(Rope rope, char *ret_buf, int i) {
+	if (rope->is_leaf) {
+		memcpy(ret_buf + i, rope->str, rope->len);
+		return i + rope->len;
+	}
+
+	i = rope_collect_cstr(rope->left, ret_buf, i);
+	return rope_collect_cstr(rope->right, ret_buf, i);
+}
+
+int
+RopeToString(Rope rope, char *ret_buf, size_t buf_size) {
+	int rv;
+
+	if (rope->len > buf_size - 1)
+		return -1;
+
+	rv = rope_collect_cstr(rope, ret_buf, 0);
+	ret_buf[rope->len] = '\0';
+
+	return rv;
+}
+
+size_t
+RopeGetLen(Rope rope) {
+	assert(rope);
+	return rope->len;
+}
+
+static Rope
+rope_get_substr(Rope rope, size_t i, size_t n) {
+	if (rope->is_leaf) {
+		if (n == rope->len)
+			return rope_ref(rope);
+
+		return RopeCreate(((char *) rope->str) + i, n);
 	} else {
-		size_t llen = node->left->len;
+		size_t llen = rope->left->len;
 
 		if (llen >= i + n)
-			return node_get_substr(node->left, i, n);
+			return rope_get_substr(rope->left, i, n);
 		else if (llen <= i)
-			return node_get_substr(node->right, i - llen, n);
+			return rope_get_substr(rope->right, i - llen, n);
 		else
-			return CreateConcat(node_get_substr(node->left, i, llen - i),
-			                    node_get_substr(node->right, 0, n - llen + i));
+			return rope_concat_internal(rope_get_substr(rope->left, i, llen - i),
+					rope_get_substr(rope->right, 0, n - llen + i));
 	}
 }
 
 Rope
 RopeSubstr(Rope rope, size_t i, size_t n) {
-	Rope new_rope = palloc(sizeof(*new_rope));
-
 	assert(rope);
 	assert(n != 0);
-	assert(i + n <= rope->root->len);
+	assert(i + n <= rope->len);
 
-	new_rope->root = node_get_substr(rope->root, i, n);
-
-	return new_rope;
+	return rope_get_substr(rope, i, n);
 }
 
 char
 RopeIndex(Rope rope, size_t i) {
-	Node node = rope->root;
-
 	assert(rope);
-	assert(i < node->len);
+	assert(i < rope->len);
 
 	for (;;) {
-		if (node->is_leaf)
-			return node->str[i];
+		if (rope->is_leaf)
+			return rope->str[i];
 		else {
-			size_t llen = node->left->len;
+			size_t llen = rope->left->len;
 
 			if (i < llen)
-				node = node->left;
+				rope = rope->left;
 			else {
-				node = node->right;
+				rope = rope->right;
 				i -= llen;
 			}
 		}
@@ -236,24 +193,24 @@ typedef enum {
 struct rope_scan_leaf_tag {
 	size_t depth;
 	bool is_end;
-	Node node;
+	Rope rope;
 	scan_dir dir[ROPE_SCAN_MAX_DEPTH];
-	Node stack[ROPE_SCAN_MAX_DEPTH];
+	Rope stack[ROPE_SCAN_MAX_DEPTH];
 };
 
 RopeScanLeaf
 RopeScanLeafInit(Rope rope) {
 	RopeScanLeaf scan = palloc(sizeof(*scan));
 
-	scan->node = rope->root;
+	scan->rope = rope;
 	scan->depth = 0;
 	scan->is_end = false;
 
-	while (!scan->node->is_leaf) {
-		scan->stack[scan->depth] = scan->node;
+	while (!scan->rope->is_leaf) {
+		scan->stack[scan->depth] = scan->rope;
 		scan->dir[scan->depth] = LEFT_DOWN;
 		scan->depth++;
-		scan->node = scan->node->left;
+		scan->rope = scan->rope->left;
 	}
 
 	return scan;
@@ -266,7 +223,7 @@ RopeScanLeafGetNext(RopeScanLeaf scan) {
 	if (scan->is_end)
 		return NULL;
 
-	rv = scan->node->str;
+	rv = scan->rope->str;
 
 	do {
 		if (scan->depth == 0) /* End of scan */
@@ -277,17 +234,17 @@ RopeScanLeafGetNext(RopeScanLeaf scan) {
 		scan->depth--;
 	} while (scan->dir[scan->depth] == RIGHT_DOWN);
 
-	scan->node = scan->stack[scan->depth];
+	scan->rope = scan->stack[scan->depth];
 	scan->dir[scan->depth] = RIGHT_DOWN;
 	scan->depth++;
-	scan->node =
-	    scan->node->right; /* XXX: Assuming non-leaf node has right child */
+	scan->rope =
+	    scan->rope->right; /* XXX: Assuming non-leaf rope has right child */
 
-	while (!scan->node->is_leaf) {
-		scan->stack[scan->depth] = scan->node;
+	while (!scan->rope->is_leaf) {
+		scan->stack[scan->depth] = scan->rope;
 		scan->dir[scan->depth] = LEFT_DOWN;
 		scan->depth++;
-		scan->node = scan->node->left;
+		scan->rope = scan->rope->left;
 	}
 
 	return rv;

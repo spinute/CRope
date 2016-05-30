@@ -1,4 +1,5 @@
 #include "rope.h"
+#include "utils.h"
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -6,8 +7,13 @@
 static void
 test_to_string(Rope rope, char expected[]) {
 	char buf[100];
+
 	memset(buf, 0, sizeof(buf));
-	RopeToString(rope, (char *) buf, sizeof(buf));
+
+	if (RopeToString(rope, (char *) buf, sizeof(buf)) < 0)
+		elog("buf_size is too small");
+
+	printf("len_expected=%zu, buflen=%zu\n", strlen(expected), strlen(buf));
 	assert(strlen(expected) == strlen(buf));
 	assert(strcmp(buf, expected) == 0);
 }
@@ -23,10 +29,29 @@ main(int argc, char *argv[]) {
 	test_to_string(rrope, right);
 
 	concat = RopeConcat(lrope, rrope);
-	RopeDestroy(lrope);
-	RopeDestroy(rrope);
 
 	RopeDump(concat);
+
+	{
+		Rope deep, moredeep;
+		deep = RopeConcat(lrope, concat);
+
+		RopeDump(deep);
+
+		test_to_string(deep, "test test desu.");
+
+		moredeep = RopeConcat(deep, concat);
+
+		RopeDump(moredeep);
+
+		test_to_string(moredeep, "test test desu.test desu.");
+
+		RopeDestroy(deep);
+		RopeDestroy(moredeep);
+	}
+
+	RopeDestroy(lrope);
+	RopeDestroy(rrope);
 
 	{
 		RopeScanLeaf scan = RopeScanLeafInit(concat);
