@@ -23,10 +23,9 @@ test_to_string(Rope rope, char expected[]) {
 static void
 test_concat(void) {
 	Rope lrope = RopeCreate(left, strlen(left)),
-		 rrope = RopeCreate(right, strlen(right)),
-		 concat = RopeConcat(lrope, rrope),
-		 deep = RopeConcat(lrope, concat),
-		 moredeep = RopeConcat(deep, concat);
+	     rrope = RopeCreate(right, strlen(right)),
+	     concat = RopeConcat(lrope, rrope), deep = RopeConcat(lrope, concat),
+	     moredeep = RopeConcat(deep, concat);
 
 	test_to_string(lrope, left);
 	test_to_string(rrope, right);
@@ -46,13 +45,11 @@ test_concat(void) {
 }
 
 static void
-test_scan(void)
-{
+test_scan(void) {
 	Rope lrope = RopeCreate(left, strlen(left)),
-		 rrope = RopeCreate(right, strlen(right)),
-		 concat = RopeConcat(lrope, rrope),
-		 deep = RopeConcat(concat, concat),
-		 moredeep = RopeConcat(concat, deep);
+	     rrope = RopeCreate(right, strlen(right)),
+	     concat = RopeConcat(lrope, rrope), deep = RopeConcat(concat, concat),
+	     moredeep = RopeConcat(concat, deep);
 
 	{
 		elog("scan leaf init");
@@ -93,11 +90,10 @@ test_scan(void)
 }
 
 static void
-test_substr(void)
-{
+test_substr(void) {
 	Rope lrope = RopeCreate(left, strlen(left)),
-		 rrope = RopeCreate(right, strlen(right)),
-		 concat = RopeConcat(lrope, rrope);
+	     rrope = RopeCreate(right, strlen(right)),
+	     concat = RopeConcat(lrope, rrope);
 	Rope lsub, rsub, bsub;
 
 	lsub = RopeSubstr(concat, 1, 3);

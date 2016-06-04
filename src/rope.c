@@ -17,8 +17,7 @@ static Rope
 rope_ref(Rope rope) {
 	assert(rope->ref_count > 0);
 
-	if (rope->ref_count == INT_MAX)
-	{
+	if (rope->ref_count == INT_MAX) {
 		elog("ref_count reaches INT_MAX");
 		return NULL;
 	}
@@ -169,8 +168,8 @@ rope_get_substr(Rope rope, size_t i, size_t n) {
 			return rope_get_substr(rope->right, i - llen, n);
 		else
 			return rope_concat_without_rec_ref(
-					rope_get_substr(rope->left, i, llen - i),
-					rope_get_substr(rope->right, 0, n - llen + i));
+			    rope_get_substr(rope->left, i, llen - i),
+			    rope_get_substr(rope->right, 0, n - llen + i));
 	}
 }
 
