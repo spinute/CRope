@@ -2,6 +2,7 @@
 #include "string.h"
 #include "utils.h"
 #include <stdbool.h>
+#include <limits.h>
 #include <stdio.h>
 
 struct rope_tag {
@@ -14,20 +15,40 @@ struct rope_tag {
 
 static Rope
 rope_ref(Rope rope) {
+	assert(rope->ref_count > 0);
+
+	if (rope->ref_count == INT_MAX)
+	{
+		elog("ref_count reaches INT_MAX");
+		return NULL;
+	}
+
 	rope->ref_count++;
+
+	if (rope->left)
+		rope_ref(rope->left);
+	if (rope->right)
+		rope_ref(rope->right);
+
 	return rope;
 }
 
 static void
 rope_deref(Rope rope) {
+	assert(rope->ref_count > 0);
+
 	rope->ref_count--;
+	if (rope->left)
+		rope_deref(rope->left);
+	if (rope->right)
+		rope_deref(rope->right);
+
 	if (rope->ref_count == 0)
 		pfree(rope);
 }
 
-static Rope
-rope_concat_internal(Rope left, Rope right)
-{
+Rope
+RopeConcat(Rope left, Rope right) {
 	Rope rope = palloc(sizeof(*rope));
 
 	rope->is_leaf = false;
@@ -37,18 +58,10 @@ rope_concat_internal(Rope left, Rope right)
 		rope->len += left->len;
 	if (right)
 		rope->len += right->len;
-	rope->left = left;
-	rope->right = right;
+	rope->left = rope_ref(left);
+	rope->right = rope_ref(right);
 
 	return rope;
-}
-
-Rope
-RopeConcat(Rope left, Rope right) {
-	assert(left);
-	assert(right);
-
-	return rope_concat_internal(rope_ref(left), rope_ref(right));
 }
 
 Rope
@@ -65,13 +78,10 @@ RopeCreate(char *str, size_t len) {
 	return rope;
 }
 
-static void
-rope_deref_tree(Rope root) {
-	if (root->left)
-		rope_deref(root->left);
-	if (root->right)
-		rope_deref(root->right);
-	rope_deref(root);
+void
+RopeDestroy(Rope rope) {
+	assert(rope);
+	rope_deref(rope);
 }
 
 static void
@@ -88,12 +98,6 @@ rope_dump(Rope rope, int level) {
 		rope_dump(rope->left, level + 1);
 		rope_dump(rope->right, level + 1);
 	}
-}
-
-void
-RopeDestroy(Rope rope) {
-	assert(rope);
-	rope_deref_tree(rope);
 }
 
 void
@@ -133,6 +137,23 @@ RopeGetLen(Rope rope) {
 }
 
 static Rope
+rope_concat_without_rec_ref(Rope left, Rope right) {
+	Rope rope = palloc(sizeof(*rope));
+
+	rope->is_leaf = false;
+	rope->ref_count = 1;
+	rope->len = 0;
+	if (left)
+		rope->len += left->len;
+	if (right)
+		rope->len += right->len;
+	rope->left = left;
+	rope->right = right;
+
+	return rope;
+}
+
+static Rope
 rope_get_substr(Rope rope, size_t i, size_t n) {
 	if (rope->is_leaf) {
 		if (n == rope->len)
@@ -147,7 +168,8 @@ rope_get_substr(Rope rope, size_t i, size_t n) {
 		else if (llen <= i)
 			return rope_get_substr(rope->right, i - llen, n);
 		else
-			return rope_concat_internal(rope_get_substr(rope->left, i, llen - i),
+			return rope_concat_without_rec_ref(
+					rope_get_substr(rope->left, i, llen - i),
 					rope_get_substr(rope->right, 0, n - llen + i));
 	}
 }
