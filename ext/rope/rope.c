@@ -1,4 +1,4 @@
-#include "ruby.h"
+#include <ruby.h>
 
 #include <assert.h>
 #include <limits.h>
@@ -367,38 +367,47 @@ rope_dsize(const void *rope)
 
 const rb_data_type_t rope_type = {"crope", {rope_dmark, rope_dfree, rope_dsize, 0}, 0, 0, 0};
 #define value2rope(rope, value) TypedData_Get_Struct((value), struct rope_tag, &rope_type, rope)
-#define rope2value(value, rope) TypedData_Wrap_Struct(rb_cRope, &rope_type, rope)
+#define rope2value(rope) TypedData_Wrap_Struct(rb_cRope, &rope_type, rope)
 
-VALUE
+static VALUE
+rope_alloc(VALUE klass)
+{
+	elog("rope_alloc called");
+	return rope2value(0);
+}
+
+static VALUE
 rope_init(int argc, VALUE *argv, VALUE self)
 {
-	VALUE str;
+	VALUE str = 0;
 	Rope rope;
 
 	rb_scan_args(argc, argv, "01", &str);
-	Check_Type(str, rb_cString);
+
+	Check_Type(str, T_STRING);
 
 	rope = RopeCreate(rb_string_value_cstr(&str), RSTRING_LEN(str));
 
 	(void) self; /* XXX: how to use self? */
 
-	rope2value(str, rope);
+	elog("rope_init called");
+	RopeDump(rope);
 
-	return str;
+	DATA_PTR(self) = rope;
+
+	return self;
 }
 
 static VALUE
 rope_plus(VALUE self, VALUE other)
 {
-	Rope r1, r2, concat;
-	VALUE rv;
+	Rope r1, r2;
 
 	value2rope(r1, self);
 	value2rope(r2, other);
+	RopeDump(r2);
 
-	rope2value(rv, RopeConcat(r1, r2));
-
-	return rv;
+	return rope2value(RopeConcat(r1, r2));
 }
 
 static VALUE
@@ -408,6 +417,8 @@ rope_to_s(VALUE self)
 	char buf[MAX_STR_SIZE];
 
 	value2rope(rope, self);
+	RopeDump(rope);
+
 	if (RopeToString(rope, buf, MAX_STR_SIZE) < 0)
 	{
 		elog("rope_to_s: buf too small");
@@ -415,12 +426,6 @@ rope_to_s(VALUE self)
 	}
 
 	return rb_str_new(buf, ROPE_LEN(rope));
-}
-
-static VALUE
-rope_to_str(VALUE self)
-{
-	return rope_to_s(self);
 }
 
 void
@@ -431,7 +436,8 @@ Init_Rope(void)
 	rb_cRope = rb_define_class("Rope", rb_cData);
 
 	rb_define_private_method(rb_cRope, "initialize", rope_init, -1);
-    rb_define_method(rb_cRope, "+", rope_plus, 1);
+	rb_define_alloc_func(rb_cRope, rope_alloc);
+	rb_define_method(rb_cRope, "+", rope_plus, 1);
     rb_define_method(rb_cRope, "to_s", rope_to_s, 0);
-    rb_define_method(rb_cRope, "to_str", rope_to_str, 0);
+    rb_define_method(rb_cRope, "to_str", rope_to_s, 0);
 }

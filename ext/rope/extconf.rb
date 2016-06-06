@@ -1,2 +1,2 @@
 require 'mkmf'
-create_makefile('rope')
+create_makefile('Rope')
