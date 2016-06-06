@@ -52,14 +52,13 @@ rope_init(int argc, VALUE *argv, VALUE self) {
 }
 
 static VALUE
-rope_at(VALUE self, VALUE vi)
-{
+rope_at(VALUE self, VALUE vi) {
 	Rope rope;
 	int i;
 	size_t len;
 	char c[2];
 
-	switch(TYPE(vi)) {
+	switch (TYPE(vi)) {
 		case T_FIXNUM:
 			break;
 		case T_BIGNUM:
@@ -78,8 +77,7 @@ rope_at(VALUE self, VALUE vi)
 
 	if (i >= 0)
 		c[0] = RopeIndex(rope, i);
-	else
-	{
+	else {
 		int ri = len + i;
 
 		if (ri < 0)
