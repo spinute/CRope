@@ -25,8 +25,10 @@ const rb_data_type_t rope_type = {
     "crope", {rope_dmark, rope_dfree, rope_dsize, 0}, 0, 0, 0};
 
 #define value2rope(rope, value) \
-	TypedData_Get_Struct((value), struct rope_tag, &rope_type, rope)
-#define rope2value(rope) TypedData_Wrap_Struct(rb_cRope, &rope_type, rope)
+	TypedData_Get_Struct((value), struct rope_tag, &rope_type, (rope))
+#define rope2value(rope) TypedData_Wrap_Struct(rb_cRope, &rope_type, (rope))
+#define value2rope_checked(value) \
+	((Rope) rb_check_typeddata((value), &rope_type))
 
 static VALUE
 rope_alloc(VALUE klass) {
@@ -40,6 +42,7 @@ rope_init(int argc, VALUE *argv, VALUE self) {
 
 	rb_scan_args(argc, argv, "01", &str);
 
+	/* XXX: empty rope is valid?*/
 	Check_Type(str, T_STRING);
 
 	rope = RopeCreate(rb_string_value_cstr(&str), RSTRING_LEN(str));
@@ -99,11 +102,11 @@ rope_len(VALUE self) {
 }
 
 static VALUE
-rope_plus(VALUE self, VALUE other) {
+rope_concat(VALUE self, VALUE other) {
 	Rope r1, r2;
 
 	value2rope(r1, self);
-	value2rope(r2, other);
+	r2 = value2rope_checked(other);
 
 	return rope2value(RopeConcat(r1, r2));
 }
@@ -133,19 +136,43 @@ rope_dump(VALUE self) {
 	return self;
 }
 
+static VALUE
+rope_equal_as_string(VALUE self, VALUE other) {
+	Rope my_rope, other_rope;
+	char my_buf[MAX_STR_SIZE], other_buf[MAX_STR_SIZE];
+
+	value2rope(my_rope, self);
+	other_rope = value2rope_checked(other);
+
+	if (RopeToString(my_rope, my_buf, MAX_STR_SIZE) < 0) {
+		elog("WARNING(rope_to_s): buf too small");
+		return Qnil;
+	}
+	if (RopeToString(other_rope, other_buf, MAX_STR_SIZE) < 0) {
+		elog("WARNING(rope_to_s): buf too small");
+		return Qnil;
+	}
+
+	return strcmp(my_buf, other_buf) == 0 ? Qtrue : Qfalse;
+}
+
 void
 Init_Rope(void) {
 #undef rb_intern
 #define rb_inetrn(rope) rb_intern_const(rope)
 	rb_cRope = rb_define_class("Rope", rb_cData);
 
-	rb_define_private_method(rb_cRope, "initialize", rope_init, -1);
 	rb_define_alloc_func(rb_cRope, rope_alloc);
-	rb_define_method(rb_cRope, "+", rope_plus, 1);
+	rb_define_private_method(rb_cRope, "initialize", rope_init, -1);
+	rb_define_method(rb_cRope, "eql?", rope_equal_as_string, 1);
+	rb_define_method(rb_cRope, "+", rope_concat, 1);
+	rb_define_method(rb_cRope, "concat", rope_concat, 1);
 	rb_define_method(rb_cRope, "length", rope_len, 0);
 	rb_define_method(rb_cRope, "size", rope_len, 0);
+	rb_define_method(rb_cRope, "[]", rope_at, 1); /* XXX: multi argument */
 	rb_define_method(rb_cRope, "at", rope_at, 1);
 	rb_define_method(rb_cRope, "to_s", rope_to_s, 0);
 	rb_define_method(rb_cRope, "to_str", rope_to_s, 0);
 	rb_define_method(rb_cRope, "inspect", rope_dump, 0);
+	rb_define_method(rb_cRope, "dump", rope_dump, 0);
 }
