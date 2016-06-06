@@ -4,7 +4,7 @@
 #include <ruby.h>
 
 static VALUE rb_cRope;
-#define MAX_STR_SIZE 1000
+#define MAX_STR_SIZE 65536
 
 static void
 rope_dmark(void *rope) {
@@ -23,6 +23,7 @@ rope_dsize(const void *rope) {
 
 const rb_data_type_t rope_type = {
     "crope", {rope_dmark, rope_dfree, rope_dsize, 0}, 0, 0, 0};
+
 #define value2rope(rope, value) \
 	TypedData_Get_Struct((value), struct rope_tag, &rope_type, rope)
 #define rope2value(rope) TypedData_Wrap_Struct(rb_cRope, &rope_type, rope)
@@ -55,12 +56,19 @@ rope_init(int argc, VALUE *argv, VALUE self) {
 }
 
 static VALUE
+rope_len(VALUE self) {
+	Rope r;
+	value2rope(r, self);
+
+	return INT2NUM(RopeGetLen(r));
+}
+
+static VALUE
 rope_plus(VALUE self, VALUE other) {
 	Rope r1, r2;
 
 	value2rope(r1, self);
 	value2rope(r2, other);
-	RopeDump(r2);
 
 	return rope2value(RopeConcat(r1, r2));
 }
@@ -71,14 +79,23 @@ rope_to_s(VALUE self) {
 	char buf[MAX_STR_SIZE];
 
 	value2rope(rope, self);
-	RopeDump(rope);
 
 	if (RopeToString(rope, buf, MAX_STR_SIZE) < 0) {
-		elog("rope_to_s: buf too small");
-		return 0;
+		elog("WARNING(rope_to_s): buf too small");
+		return Qnil;
 	}
 
 	return rb_str_new(buf, RopeGetLen(rope));
+}
+
+static VALUE
+rope_dump(VALUE self) {
+	Rope rope;
+	value2rope(rope, self);
+
+	RopeDump(rope);
+
+	return self;
 }
 
 void
@@ -90,6 +107,9 @@ Init_Rope(void) {
 	rb_define_private_method(rb_cRope, "initialize", rope_init, -1);
 	rb_define_alloc_func(rb_cRope, rope_alloc);
 	rb_define_method(rb_cRope, "+", rope_plus, 1);
+	rb_define_method(rb_cRope, "length", rope_len, 0);
+	rb_define_method(rb_cRope, "size", rope_len, 0);
 	rb_define_method(rb_cRope, "to_s", rope_to_s, 0);
 	rb_define_method(rb_cRope, "to_str", rope_to_s, 0);
+	rb_define_method(rb_cRope, "inspect", rope_dump, 0);
 }

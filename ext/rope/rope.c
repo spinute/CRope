@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#define ROPE_SCAN_MAX_DEPTH \
-	64 /* TODO: It may be possible to fix this value by wordsize */
+/* TODO: It may be possible to fix this value by wordsize if balanced */
+#define ROPE_SCAN_MAX_DEPTH 64
 
 struct rope_tag {
 	size_t len; /* w/o NUL */
