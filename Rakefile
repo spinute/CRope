@@ -37,4 +37,6 @@ desc 'clang-format'
 task :fmt do
 	sh "clang-format -i src/*.c"
 	sh "clang-format -i src/*.h"
+	sh "clang-format -i ext/rope/*.c"
+	sh "clang-format -i ext/rope/*.h"
 end

@@ -137,8 +137,8 @@ ORIG_SRCS = rope.c
 SRCS = $(ORIG_SRCS) 
 OBJS = rope.o
 HDRS = 
-TARGET = rope
-TARGET_NAME = rope
+TARGET = Rope
+TARGET_NAME = Rope
 TARGET_ENTRY = Init_$(TARGET_NAME)
 DLLIB = $(TARGET).bundle
 EXTSTATIC = 
@@ -189,7 +189,7 @@ install-rb-default: pre-install-rb-default
 pre-install-rb: Makefile
 pre-install-rb-default: Makefile
 pre-install-rb-default:
-	$(ECHO) installing default rope libraries
+	$(ECHO) installing default Rope libraries
 $(TIMESTAMP_DIR)/.RUBYARCHDIR.time:
 	$(Q) $(MAKEDIRS) $(@D) $(RUBYARCHDIR)
 	$(Q) $(TOUCH) $@
