@@ -30,7 +30,6 @@ const rb_data_type_t rope_type = {
 
 static VALUE
 rope_alloc(VALUE klass) {
-	elog("rope_alloc called");
 	return rope2value(0);
 }
 
@@ -47,12 +46,50 @@ rope_init(int argc, VALUE *argv, VALUE self) {
 
 	(void) self; /* XXX: how to use self? */
 
-	elog("rope_init called");
-	RopeDump(rope);
-
 	DATA_PTR(self) = rope;
 
 	return self;
+}
+
+static VALUE
+rope_at(VALUE self, VALUE vi)
+{
+	Rope rope;
+	int i;
+	size_t len;
+	char c[2];
+
+	switch(TYPE(vi)) {
+		case T_FIXNUM:
+			break;
+		case T_BIGNUM:
+			elog("rope_at: too lange index specified");
+		default:
+			rb_raise(rb_eTypeError, "rope_at: invalid type argument");
+			break;
+	}
+
+	value2rope(rope, self);
+	i = FIX2INT(vi);
+	len = RopeGetLen(rope);
+
+	if (len <= i)
+		return Qnil;
+
+	if (i >= 0)
+		c[0] = RopeIndex(rope, i);
+	else
+	{
+		int ri = len + i;
+
+		if (ri < 0)
+			return Qnil;
+
+		c[0] = RopeIndex(rope, ri);
+	}
+
+	c[1] = '\0';
+	return rb_str_new_cstr(c);
 }
 
 static VALUE
@@ -109,6 +146,7 @@ Init_Rope(void) {
 	rb_define_method(rb_cRope, "+", rope_plus, 1);
 	rb_define_method(rb_cRope, "length", rope_len, 0);
 	rb_define_method(rb_cRope, "size", rope_len, 0);
+	rb_define_method(rb_cRope, "at", rope_at, 1);
 	rb_define_method(rb_cRope, "to_s", rope_to_s, 0);
 	rb_define_method(rb_cRope, "to_str", rope_to_s, 0);
 	rb_define_method(rb_cRope, "inspect", rope_dump, 0);
