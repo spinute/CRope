@@ -344,41 +344,38 @@ RopeScanCharFini(RopeScanChar scan) {
 }
 /* Ruby C extension wrapper */
 
-#define ROPE_LEN(rope) (((Rope) (rope))->len)
-#define ROPE_STR(rope) (((Rope) (rope))->str)
+#define ROPE_LEN(rope) (((Rope)(rope))->len)
+#define ROPE_STR(rope) (((Rope)(rope))->str)
 
 static void
-rope_dmark(void *rope)
-{
+rope_dmark(void *rope) {
 	(void) rope;
 }
 
 static void
-rope_dfree(void *rope)
-{
+rope_dfree(void *rope) {
 	RopeDestroy(rope);
 }
 
 static size_t
-rope_dsize(const void *rope)
-{
+rope_dsize(const void *rope) {
 	return offsetof(struct rope_tag, str) + ROPE_LEN(rope);
 }
 
-const rb_data_type_t rope_type = {"crope", {rope_dmark, rope_dfree, rope_dsize, 0}, 0, 0, 0};
-#define value2rope(rope, value) TypedData_Get_Struct((value), struct rope_tag, &rope_type, rope)
+const rb_data_type_t rope_type = {
+    "crope", {rope_dmark, rope_dfree, rope_dsize, 0}, 0, 0, 0};
+#define value2rope(rope, value) \
+	TypedData_Get_Struct((value), struct rope_tag, &rope_type, rope)
 #define rope2value(rope) TypedData_Wrap_Struct(rb_cRope, &rope_type, rope)
 
 static VALUE
-rope_alloc(VALUE klass)
-{
+rope_alloc(VALUE klass) {
 	elog("rope_alloc called");
 	return rope2value(0);
 }
 
 static VALUE
-rope_init(int argc, VALUE *argv, VALUE self)
-{
+rope_init(int argc, VALUE *argv, VALUE self) {
 	VALUE str = 0;
 	Rope rope;
 
@@ -399,8 +396,7 @@ rope_init(int argc, VALUE *argv, VALUE self)
 }
 
 static VALUE
-rope_plus(VALUE self, VALUE other)
-{
+rope_plus(VALUE self, VALUE other) {
 	Rope r1, r2;
 
 	value2rope(r1, self);
@@ -411,16 +407,14 @@ rope_plus(VALUE self, VALUE other)
 }
 
 static VALUE
-rope_to_s(VALUE self)
-{
+rope_to_s(VALUE self) {
 	Rope rope;
 	char buf[MAX_STR_SIZE];
 
 	value2rope(rope, self);
 	RopeDump(rope);
 
-	if (RopeToString(rope, buf, MAX_STR_SIZE) < 0)
-	{
+	if (RopeToString(rope, buf, MAX_STR_SIZE) < 0) {
 		elog("rope_to_s: buf too small");
 		return 0;
 	}
@@ -429,8 +423,7 @@ rope_to_s(VALUE self)
 }
 
 void
-Init_Rope(void)
-{
+Init_Rope(void) {
 #undef rb_intern
 #define rb_inetrn(rope) rb_intern_const(rope)
 	rb_cRope = rb_define_class("Rope", rb_cData);
@@ -438,6 +431,6 @@ Init_Rope(void)
 	rb_define_private_method(rb_cRope, "initialize", rope_init, -1);
 	rb_define_alloc_func(rb_cRope, rope_alloc);
 	rb_define_method(rb_cRope, "+", rope_plus, 1);
-    rb_define_method(rb_cRope, "to_s", rope_to_s, 0);
-    rb_define_method(rb_cRope, "to_str", rope_to_s, 0);
+	rb_define_method(rb_cRope, "to_s", rope_to_s, 0);
+	rb_define_method(rb_cRope, "to_str", rope_to_s, 0);
 }
