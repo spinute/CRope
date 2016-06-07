@@ -187,7 +187,6 @@ rope_get_substr(const Rope rope, size_t i, size_t n) {
 Rope
 RopeSubstr(const Rope rope, size_t i, size_t n) {
 	assert(rope);
-	assert(n != 0);
 	assert(i + n <= rope->len);
 
 	return rope_get_substr(rope, i, n);

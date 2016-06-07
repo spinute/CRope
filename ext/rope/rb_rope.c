@@ -47,33 +47,35 @@ rope_init(int argc, VALUE *argv, VALUE self) {
 
 	rope = RopeCreate(rb_string_value_cstr(&str), RSTRING_LEN(str));
 
-	(void) self; /* XXX: how to use self? */
-
 	DATA_PTR(self) = rope;
 
 	return self;
 }
 
-static VALUE
-rope_at(VALUE self, VALUE vi) {
-	Rope rope;
-	int i;
-	size_t len;
-	char c[2];
-
-	switch (TYPE(vi)) {
+static int
+get_fixnum_checked(VALUE v) {
+	switch (TYPE(v)) {
 		case T_FIXNUM:
 			break;
 		case T_BIGNUM:
 			elog("rope_at: too lange index specified");
 		default:
-			rb_raise(rb_eTypeError, "rope_at: invalid type argument");
+			rb_raise(rb_eTypeError, "%s: invalid type argument", __func__);
 			break;
 	}
 
+	return FIX2INT(v);
+}
+
+static VALUE
+rope_at(VALUE self, VALUE vi) {
+	Rope rope;
+	int i, len;
+	char c[2];
+
 	value2rope(rope, self);
-	i = FIX2INT(vi);
-	len = RopeGetLen(rope);
+	i = get_fixnum_checked(vi);
+	len = (int) RopeGetLen(rope);
 
 	if (len <= i)
 		return Qnil;
@@ -91,6 +93,49 @@ rope_at(VALUE self, VALUE vi) {
 
 	c[1] = '\0';
 	return rb_str_new_cstr(c);
+}
+
+static VALUE
+rope_substr(VALUE self, VALUE vi, VALUE vn) {
+	Rope rope, ret_rope;
+	int i = get_fixnum_checked(vi), n = get_fixnum_checked(vn), len;
+
+	value2rope(rope, self);
+	len = (int) RopeGetLen(rope);
+
+	if (len <= i || n < 0)
+		return Qnil;
+
+	if (i >= 0) {
+		if (i + n > len)
+			n = len - i;
+		ret_rope = RopeSubstr(rope, i, n);
+	} else {
+		int ri = len + i;
+
+		if (ri < 0)
+			return Qnil;
+
+		if (ri + n > len)
+			n = len - ri;
+
+		ret_rope = RopeSubstr(rope, ri, n);
+	}
+
+	return rope2value(ret_rope);
+}
+
+static VALUE
+rope_slice(int argc, VALUE *argv, VALUE self) {
+	VALUE vi, vn;
+	int n_arg = rb_scan_args(argc, argv, "11", &vi, &vn);
+
+	if (n_arg == 1)
+		return rope_at(self, vi);
+	else if (n_arg == 2)
+		return rope_substr(self, vi, vn);
+	else
+		rb_raise(rb_eArgError, "%s: unexpected n_arg", __func__);
 }
 
 static VALUE
@@ -169,7 +214,8 @@ Init_Rope(void) {
 	rb_define_method(rb_cRope, "concat", rope_concat, 1);
 	rb_define_method(rb_cRope, "length", rope_len, 0);
 	rb_define_method(rb_cRope, "size", rope_len, 0);
-	rb_define_method(rb_cRope, "[]", rope_at, 1); /* XXX: multi argument */
+	rb_define_method(rb_cRope, "[]", rope_slice, -1);
+	rb_define_method(rb_cRope, "slice", rope_slice, -1);
 	rb_define_method(rb_cRope, "at", rope_at, 1);
 	rb_define_method(rb_cRope, "to_s", rope_to_s, 0);
 	rb_define_method(rb_cRope, "to_str", rope_to_s, 0);
