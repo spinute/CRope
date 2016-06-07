@@ -73,8 +73,8 @@ rope_at(VALUE self, VALUE vi) {
 	int i, len;
 	char c[2];
 
-	value2rope(rope, self);
 	i = get_fixnum_checked(vi);
+	value2rope(rope, self);
 	len = (int) RopeGetLen(rope);
 
 	if (len <= i)
@@ -97,7 +97,7 @@ rope_at(VALUE self, VALUE vi) {
 
 static VALUE
 rope_substr(VALUE self, VALUE vi, VALUE vn) {
-	Rope rope, ret_rope;
+	Rope rope;
 	int i = get_fixnum_checked(vi), n = get_fixnum_checked(vn), len;
 
 	value2rope(rope, self);
@@ -109,7 +109,7 @@ rope_substr(VALUE self, VALUE vi, VALUE vn) {
 	if (i >= 0) {
 		if (i + n > len)
 			n = len - i;
-		ret_rope = RopeSubstr(rope, i, n);
+		return rope2value(RopeSubstr(rope, i, n));
 	} else {
 		int ri = len + i;
 
@@ -119,10 +119,8 @@ rope_substr(VALUE self, VALUE vi, VALUE vn) {
 		if (ri + n > len)
 			n = len - ri;
 
-		ret_rope = RopeSubstr(rope, ri, n);
+		return rope2value(RopeSubstr(rope, ri, n));
 	}
-
-	return rope2value(ret_rope);
 }
 
 static VALUE
@@ -201,6 +199,40 @@ rope_equal_as_string(VALUE self, VALUE other) {
 	return strcmp(my_buf, other_buf) == 0 ? Qtrue : Qfalse;
 }
 
+static VALUE
+rope_delete(int argc, VALUE *argv, VALUE self) {
+	Rope rope;
+	VALUE vi, vn;
+	int i, n, len;
+	int n_arg = rb_scan_args(argc, argv, "11", &vi, &vn);
+
+	n = (n_arg == 1 ? 1 : get_fixnum_checked(vn));
+	i = get_fixnum_checked(vi);
+
+	value2rope(rope, self);
+	len = (int) RopeGetLen(rope);
+
+	if (len <= i || n < 0)
+		return Qnil;
+
+	/* copied from rope_substr */
+	if (i >= 0) {
+		if (i + n > len)
+			n = len - i;
+		return rope2value(RopeDelete(rope, i, n));
+	} else {
+		int ri = len + i;
+
+		if (ri < 0)
+			return Qnil;
+
+		if (ri + n > len)
+			n = len - ri;
+
+		return rope2value(RopeDelete(rope, ri, n));
+	}
+}
+
 void
 Init_Rope(void) {
 #undef rb_intern
@@ -215,6 +247,7 @@ Init_Rope(void) {
 	rb_define_method(rb_cRope, "length", rope_len, 0);
 	rb_define_method(rb_cRope, "size", rope_len, 0);
 	rb_define_method(rb_cRope, "[]", rope_slice, -1);
+	rb_define_method(rb_cRope, "delete_at", rope_delete, -1);
 	rb_define_method(rb_cRope, "slice", rope_slice, -1);
 	rb_define_method(rb_cRope, "at", rope_at, 1);
 	rb_define_method(rb_cRope, "to_s", rope_to_s, 0);

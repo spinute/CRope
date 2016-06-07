@@ -188,8 +188,29 @@ Rope
 RopeSubstr(const Rope rope, size_t i, size_t n) {
 	assert(rope);
 	assert(i + n <= rope->len);
+	assert(i >= 0);
 
 	return rope_get_substr(rope, i, n);
+}
+
+Rope
+RopeDelete(const Rope rope, size_t i, size_t n) {
+	Rope left, right, ret_rope;
+	assert(rope);
+	assert(i + n <= rope->len);
+	assert(i >= 0);
+
+	if (i == 0 || i + n == rope->len)
+		return RopeSubstr(rope, i, n);
+
+	left = RopeSubstr(rope, 0, i);
+	right = RopeSubstr(rope, i + n, rope->len - i - n);
+	ret_rope = RopeConcat(left, right);
+
+	RopeDestroy(left);
+	RopeDestroy(right);
+
+	return ret_rope;
 }
 
 char

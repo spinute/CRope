@@ -15,6 +15,7 @@ size_t RopeGetSize(const Rope rope);
 
 Rope RopeConcat(const Rope left, const Rope right);
 Rope RopeSubstr(const Rope rope, size_t i, size_t n);
+Rope RopeDelete(const Rope rope, size_t i, size_t n);
 char RopeIndex(const Rope rope, size_t i);
 
 typedef struct rope_scan_leaf_tag *RopeScanLeaf;
