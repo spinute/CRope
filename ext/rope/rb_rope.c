@@ -200,7 +200,8 @@ rope_equal_as_string(VALUE self, VALUE other) {
 }
 
 static VALUE
-rope_delete(int argc, VALUE *argv, VALUE self) {
+rope_delete(int argc, VALUE *argv, VALUE self)
+{
 	Rope rope;
 	VALUE vi, vn;
 	int i, n, len;
