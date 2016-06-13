@@ -21,6 +21,7 @@ struct rope_tag {
 
 static Rope
 rope_ref(Rope rope) {
+	/*
 	assert(rope->ref_count > 0);
 
 	if (rope->ref_count == INT_MAX) {
@@ -34,12 +35,13 @@ rope_ref(Rope rope) {
 		rope_ref(rope->left);
 	if (rope->right)
 		rope_ref(rope->right);
-
+	*/
 	return rope;
 }
 
 static void
 rope_deref(Rope rope) {
+	/*
 	assert(rope->ref_count > 0);
 
 	rope->ref_count--;
@@ -50,6 +52,7 @@ rope_deref(Rope rope) {
 
 	if (rope->ref_count == 0)
 		pfree(rope);
+		*/
 }
 
 Rope
