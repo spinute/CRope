@@ -4,7 +4,7 @@
 #include <ruby.h>
 
 static VALUE rb_cRope;
-#define MAX_STR_SIZE 65536
+#define MAX_STR_SIZE 1024*1024
 
 static void
 rope_dmark(void *rope) {
